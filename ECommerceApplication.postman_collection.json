@@ -2,6 +2,7 @@
 	"info": {
 		"_postman_id": "3bccdc95-7660-4725-b56e-e0134822eba8",
 		"name": "ECommerceApplication",
+		"description": "**Individual Microservices**\n\nCustomer [http://localhost:9001/swagger-ui.html#/](http://localhost:9001/swagger-ui.html#/Cart)\n\nCart [http://localhost:9004/swagger-ui.html#/](http://localhost:9004/swagger-ui.html#/)\n\nInventory [http://localhost:9003/swagger-ui.html#/](http://localhost:9003/swagger-ui.html#/Order)\n\nOrder [http://localhost:9005/swagger-ui.html#/](http://localhost:9005/swagger-ui.html#/Product)\n\nProduct [http://localhost:9002/swagger-ui.html#/](http://localhost:9002/swagger-ui.html#/Shopping)\n\nShopping [http://localhost:9006/swagger-ui.html#/](http://localhost:9006/swagger-ui.html#/Below)\n\n**Below are Api Gateway Requests Via Shoppig Service:**",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12529508"
 	},
