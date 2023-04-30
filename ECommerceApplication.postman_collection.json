@@ -1,0 +1,349 @@
+{
+	"info": {
+		"_postman_id": "3bccdc95-7660-4725-b56e-e0134822eba8",
+		"name": "ECommerceApplication",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12529508"
+	},
+	"item": [
+		{
+			"name": "Hello",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:9096/api/shoppingservice/customer/hello",
+					"host": [
+						"localhost"
+					],
+					"port": "9096",
+					"path": [
+						"api",
+						"shoppingservice",
+						"customer",
+						"hello"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Customer",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"customerId\": 1,\r\n    \"customerName\": \"Swarnim\",\r\n    \"customerEmail\": \"swarnim0300@gmail.com\",\r\n    \"customerBillingAddress\": {\r\n        \"addressId\": 9,\r\n        \"doorNo\": 18,\r\n        \"streetName\": \"Civil Lines\",\r\n        \"layout\": \"Karishma\",\r\n        \"city\": \"Kawardha\",\r\n        \"pincode\": 4915\r\n    },\r\n    \"customerShippingAddress\": {\r\n        \"addressId\": 23,\r\n        \"doorNo\": 45,\r\n        \"streetName\": \"Shanti Nagar\",\r\n        \"layout\": \"BTM\",\r\n        \"city\": \"Raipur\",\r\n        \"pincode\": 4915\r\n    }\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:9096/api/shoppingservice/customer/",
+					"host": [
+						"localhost"
+					],
+					"port": "9096",
+					"path": [
+						"api",
+						"shoppingservice",
+						"customer",
+						""
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Create Customer",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"customerId\": 1,\r\n    \"customerName\": \"Swarnim\",\r\n    \"customerEmail\": \"swarnim0300@gmail.com\",\r\n    \"customerBillingAddress\": {\r\n        \"addressId\": 9,\r\n        \"doorNo\": 18,\r\n        \"streetName\": \"Civil Lines\",\r\n        \"layout\": \"Karishma\",\r\n        \"city\": \"Kawardha\",\r\n        \"pincode\": 4915\r\n    },\r\n    \"customerShippingAddress\": {\r\n        \"addressId\": 23,\r\n        \"doorNo\": 45,\r\n        \"streetName\": \"Shanti Nagar\",\r\n        \"layout\": \"BTM\",\r\n        \"city\": \"Raipur\",\r\n        \"pincode\": 4915\r\n    }\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "localhost:9096/api/shoppingservice/customer/",
+							"host": [
+								"localhost"
+							],
+							"port": "9096",
+							"path": [
+								"api",
+								"shoppingservice",
+								"customer",
+								""
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 30 Apr 2023 19:35:09 GMT"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=60"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"customerId\": 1,\n    \"customerName\": \"Swarnim\",\n    \"customerEmail\": \"swarnim0300@gmail.com\",\n    \"customerBillingAddress\": {\n        \"addressId\": 6,\n        \"doorNo\": 18,\n        \"streetName\": \"Civil Lines\",\n        \"layout\": \"Karishma\",\n        \"city\": \"Kawardha\",\n        \"pincode\": 4915\n    },\n    \"customerShippingAddress\": {\n        \"addressId\": 7,\n        \"doorNo\": 45,\n        \"streetName\": \"Shanti Nagar\",\n        \"layout\": \"BTM\",\n        \"city\": \"Raipur\",\n        \"pincode\": 4915\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "Add Products in Cart for a Customer",
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"cartid\": 2,\r\n    \"lineitem\": [\r\n        {\r\n            \"itemid\": 4,\r\n            \"productId\": 4,\r\n            \"productName\": \"Shampoo\",\r\n            \"quantity\": 3\r\n        },\r\n        {\r\n            \"itemid\": 6,\r\n            \"productId\": 6,\r\n            \"productName\": \"Sabun\",\r\n            \"quantity\": 8\r\n        }\r\n    ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "localhost:9096/api/shoppingservice/customer/1/cart",
+					"host": [
+						"localhost"
+					],
+					"port": "9096",
+					"path": [
+						"api",
+						"shoppingservice",
+						"customer",
+						"1",
+						"cart"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Add Products in Cart for a Customer",
+					"originalRequest": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"cartid\": 2,\r\n    \"lineitem\": [\r\n        {\r\n            \"itemid\": 5,\r\n            \"productId\": 7,\r\n            \"productName\": \"Shampoo2\",\r\n            \"quantity\": 3\r\n        },\r\n        {\r\n            \"itemid\": 8,\r\n            \"productId\": 7,\r\n            \"productName\": \"Sabun2\",\r\n            \"quantity\": 8\r\n        }\r\n    ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "localhost:9096/api/shoppingservice/customer/1/cart",
+							"host": [
+								"localhost"
+							],
+							"port": "9096",
+							"path": [
+								"api",
+								"shoppingservice",
+								"customer",
+								"1",
+								"cart"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 30 Apr 2023 19:40:06 GMT"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=60"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"cartid\": 1,\n    \"lineitem\": [\n        {\n            \"itemid\": 1,\n            \"productId\": 4,\n            \"productName\": \"Shampoo\",\n            \"quantity\": 3\n        },\n        {\n            \"itemid\": 2,\n            \"productId\": 6,\n            \"productName\": \"Sabun\",\n            \"quantity\": 8\n        }\n    ]\n}"
+				}
+			]
+		},
+		{
+			"name": "Place Order for a Customer",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "localhost:9096/api/shoppingservice/customer/{customerId}/order",
+					"host": [
+						"localhost"
+					],
+					"port": "9096",
+					"path": [
+						"api",
+						"shoppingservice",
+						"customer",
+						"{customerId}",
+						"order"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Place Order for a Customer",
+					"originalRequest": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "localhost:9096/api/shoppingservice/customer/1/order",
+							"host": [
+								"localhost"
+							],
+							"port": "9096",
+							"path": [
+								"api",
+								"shoppingservice",
+								"customer",
+								"1",
+								"order"
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 30 Apr 2023 19:45:56 GMT"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=60"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"orderid\": 2,\n    \"lineitem\": [\n        {\n            \"itemid\": 3,\n            \"productId\": 7,\n            \"productName\": \"Shampoo2\",\n            \"quantity\": 3\n        },\n        {\n            \"itemid\": 4,\n            \"productId\": 7,\n            \"productName\": \"Sabun2\",\n            \"quantity\": 8\n        }\n    ]\n}"
+				}
+			]
+		},
+		{
+			"name": "Get All Orders made by Customer",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:9096/api/shoppingservice/customer/{customerId}/orders",
+					"host": [
+						"localhost"
+					],
+					"port": "9096",
+					"path": [
+						"api",
+						"shoppingservice",
+						"customer",
+						"{customerId}",
+						"orders"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Get All Orders made by Customer",
+					"originalRequest": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:9096/api/shoppingservice/customer/1/orders",
+							"host": [
+								"localhost"
+							],
+							"port": "9096",
+							"path": [
+								"api",
+								"shoppingservice",
+								"customer",
+								"1",
+								"orders"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Date",
+							"value": "Sun, 30 Apr 2023 19:42:24 GMT"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=60"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"customer\": {\n        \"customerId\": 1,\n        \"customerName\": \"Swarnim\",\n        \"customerEmail\": \"swarnim0300@gmail.com\",\n        \"customerBillingAddress\": {\n            \"addressId\": 6,\n            \"doorNo\": 18,\n            \"streetName\": \"Civil Lines\",\n            \"layout\": \"Karishma\",\n            \"city\": \"Kawardha\",\n            \"pincode\": 4915\n        },\n        \"customerShippingAddress\": {\n            \"addressId\": 7,\n            \"doorNo\": 45,\n            \"streetName\": \"Shanti Nagar\",\n            \"layout\": \"BTM\",\n            \"city\": \"Raipur\",\n            \"pincode\": 4915\n        }\n    },\n    \"orders\": [\n        {\n            \"orderid\": 1,\n            \"lineitem\": [\n                {\n                    \"itemid\": 1,\n                    \"productId\": 4,\n                    \"productName\": \"Shampoo\",\n                    \"quantity\": 3\n                },\n                {\n                    \"itemid\": 2,\n                    \"productId\": 6,\n                    \"productName\": \"Sabun\",\n                    \"quantity\": 8\n                }\n            ]\n        }\n    ]\n}"
+				}
+			]
+		}
+	]
+}
