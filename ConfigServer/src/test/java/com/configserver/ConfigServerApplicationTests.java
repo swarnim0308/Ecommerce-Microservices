@@ -1,10 +1,10 @@
-package onlineretailstore;
+package com.configserver;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest(classes = StoreApplication.class)
-class StoreApplicationTests {
+@SpringBootTest
+class ConfigServerApplicationTests {
 
 	@Test
 	void contextLoads() {
