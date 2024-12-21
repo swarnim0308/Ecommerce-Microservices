@@ -1,0 +1,109 @@
+services:
+#  config-server:
+#    build: ./config-server
+#    ports:
+#      - "8888:8888"
+#  networks:
+#    - ecommerce-network
+
+  service-registry:
+    build: ./Eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - ecommerce-network
+
+  hystrix-server:
+    build: ./hystrix-server
+    ports:
+      - "9095:9095"
+    depends_on:
+#      - config-server
+      - service-registry
+      - customer-service
+      - inventory-service
+      - order-service
+      - shipping-service
+    networks:
+      - ecommerce-network
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "9002:9002"
+    depends_on:
+#      - config-server
+      - service-registry
+    networks:
+      - ecommerce-network
+
+  cart-entity:
+    build: ./Cart-Entity
+    ports:
+      - "9004:9004"
+    depends_on:
+#      - config-server
+      - service-registry
+    networks:
+      - ecommerce-network
+
+  customer-service:
+    build: ./CustomerService
+    ports:
+      - "9001:9001"
+    depends_on:
+#      - config-server
+      - service-registry
+    networks:
+      - ecommerce-network
+
+  inventory-service:
+    build: ./Inventory-Service
+    ports:
+      - "9003:9003"
+    depends_on:
+#      - config-server
+      - service-registry
+    networks:
+      - ecommerce-network
+
+  order-service:
+    build: ./OrderService
+    ports:
+      - "9005:9005"
+    depends_on:
+#      - config-server
+      - service-registry
+      - customer-service
+      - inventory-service
+    networks:
+      - ecommerce-network
+
+  shipping-service:
+    build: ./shipping-service
+    ports:
+      - "9006:9006"
+    depends_on:
+#      - config-server
+      - service-registry
+      - order-service
+    networks:
+      - ecommerce-network
+
+  zuul-api-gateway:
+    build: ./zuul-api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+#      - config-server
+      - service-registry
+      - customer-service
+      - inventory-service
+      - order-service
+      - shipping-service
+    networks:
+      - ecommerce-network
+
+networks:
+  ecommerce-network:
+    driver: bridge
