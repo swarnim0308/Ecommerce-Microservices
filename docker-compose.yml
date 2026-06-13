@@ -51,18 +51,7 @@ services:
     networks:
       - ecommerce-network
 
-  hystrix-server:
-    build: ./hystrix-server
-    container_name: hystrix-server
-    ports:
-      - "9005:9005"
-    depends_on:
-      - service-registry
-    environment:
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://service-registry:8761/eureka/
-      - SPRING_PROFILES_ACTIVE=docker
-    networks:
-      - ecommerce-network
+
 
   # --- Microservices ---
   product-service:
