@@ -1,4 +1,3 @@
-# Ecommerce-MSDemo
 # E-Commerce Microservices Platform
 
 A scalable, distributed e-commerce backend platform built using **Java 17**, **Spring Boot**, and **Spring Cloud**. The architecture incorporates centralized configuration management, dynamic service discovery, resilient service-to-service communication, and an API gateway topology.
@@ -37,6 +36,21 @@ Ensure the following tools are installed locally on your development machine:
 * **Docker Desktop / Docker Compose Engine**
 
 ---
+
+## 🏗️ **Architecture Overview**  
+### Key Microservices:
+- **Config Server** – Centralized configuration for all services.  
+- **Eureka Service Registry** – Service discovery for dynamic load balancing.  
+- **Zuul API Gateway** – Routing and authentication for APIs.  
+- **Hystrix Server** – Circuit breaker for fault isolation and resilience.  
+
+### Core Business Services:
+- **Customer Service** – Manages user profiles and customer data.  
+- **Product Service** – Handles product catalog and inventory.  
+- **Order Service** – Processes orders and manages order history.  
+- **Inventory Service** – Tracks stock levels and manages availability.  
+- **Shipping Service** – Handles shipment tracking and delivery updates.  
+
 
 ## Getting Started: Compilation & Build Order
 
