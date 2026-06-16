@@ -1,0 +1,157 @@
+x-service-env: &service-env
+  SPRING_CLOUD_CONFIG_URI: http://config-server:8888
+  EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka/
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/ecommerce
+  SPRING_DATASOURCE_USERNAME: root
+  SPRING_DATASOURCE_PASSWORD: password
+
+services:
+  # --- Databases ---
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ecommerce
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ecommerce-network
+
+  # --- Infrastructure ---
+  service-registry:
+    build: ./service-registery
+    container_name: service-registry
+    restart: unless-stopped
+    ports:
+      - "8761:8761"
+    environment:
+      EUREKA_CLIENT_REGISTERWITHEUREKA: "false"
+      EUREKA_CLIENT_FETCHREGISTRY: "false"
+    networks:
+      - ecommerce-network
+
+  config-server:
+    build: ./Config-Server
+    container_name: config-server
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+    depends_on:
+      - service-registry
+    environment:
+      SPRING_PROFILES_ACTIVE: native
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka/
+    volumes:
+      - ./config-properties:/config/config-properties
+    networks:
+      - ecommerce-network
+
+  zuul-api-gateway:
+    build: ./zuul-api-gateway
+    container_name: zuul-api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - service-registry
+      - config-server
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka/
+    networks:
+      - ecommerce-network
+
+  # --- Microservices ---
+  product-service:
+    build: ./product-service
+    container_name: product-service
+    ports:
+      - "9002:9002"
+    depends_on:
+      - service-registry
+      - config-server
+      - postgres-db
+    environment:
+      <<: *service-env
+    networks:
+      - ecommerce-network
+
+  order-service:
+    build: ./OrderService
+    container_name: order-service
+    ports:
+      - "9005:9005"
+    depends_on:
+      - service-registry
+      - config-server
+      - postgres-db
+    environment:
+      <<: *service-env
+    networks:
+      - ecommerce-network
+
+  inventory-service:
+    build: ./Inventory-Service
+    container_name: inventory-service
+    ports:
+      - "9003:9003"
+    depends_on:
+      - service-registry
+      - config-server
+      - postgres-db
+    environment:
+      <<: *service-env
+    networks:
+      - ecommerce-network
+
+  cart-service:
+    build: ./Cart-Entity
+    container_name: cart-service
+    ports:
+      - "9004:9004"
+    depends_on:
+      - service-registry
+      - config-server
+      - postgres-db
+    environment:
+      <<: *service-env
+    networks:
+      - ecommerce-network
+
+  customer-service:
+    build: ./CustomerService
+    container_name: customer-service
+    restart: unless-stopped
+    ports:
+      - "9001:9001"
+    depends_on:
+      - service-registry
+      - config-server
+      - postgres-db
+    environment:
+      <<: *service-env
+    networks:
+      - ecommerce-network
+
+  shipping-service:
+    build: ./shipping-service
+    container_name: shipping-service
+    ports:
+      - "9006:9006"
+    depends_on:
+      - service-registry
+      - config-server
+      - postgres-db
+    environment:
+      <<: *service-env
+    networks:
+      - ecommerce-network
+
+networks:
+  ecommerce-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

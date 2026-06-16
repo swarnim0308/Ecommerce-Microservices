@@ -19,7 +19,6 @@ import org.springframework.web.client.RestTemplate;
 
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.discovery.EurekaClient;
-import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import com.retail.shippingservice.entity.CustomerOrder;
 import com.retail.shippingservice.repository.CustomerOrderRepository;
 import com.retail.shippingservice.vo.CartVo;

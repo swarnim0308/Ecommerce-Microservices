@@ -1,6 +1,6 @@
 package com.ms.inventory.service;
 
-import javax.persistence.Entity;
+import jakarta.persistence.Entity;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
