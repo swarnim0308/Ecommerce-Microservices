@@ -67,6 +67,7 @@ services:
   product-service:
     build: ./product-service
     container_name: product-service
+    restart: unless-stopped
     ports:
       - "9002:9002"
     depends_on:
@@ -81,6 +82,7 @@ services:
   order-service:
     build: ./OrderService
     container_name: order-service
+    restart: unless-stopped
     ports:
       - "9005:9005"
     depends_on:
@@ -95,6 +97,7 @@ services:
   inventory-service:
     build: ./Inventory-Service
     container_name: inventory-service
+    restart: unless-stopped
     ports:
       - "9003:9003"
     depends_on:
@@ -109,6 +112,7 @@ services:
   cart-service:
     build: ./Cart-Entity
     container_name: cart-service
+    restart: unless-stopped
     ports:
       - "9004:9004"
     depends_on:
