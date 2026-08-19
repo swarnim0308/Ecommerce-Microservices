@@ -6,10 +6,24 @@ const state = {
   user: JSON.parse(localStorage.getItem('user')) || null
 }
 
+// Backend service endpoints, proxied to the API Gateway on :8080.
+// The gateway rewrites the /api/<service>/ prefix to each service's controller.
+const API = {
+  products: '/api/productservice',
+  customers: '/api/customerservice',
+  cart: '/api/cartservice',
+  inventory: '/api/inventoryservice',
+  order: '/api/orderservice',
+  shipping: '/api/shoppingservice'
+}
+
+let productsCache = []
+
 const routes = {
   '/': Home,
   '/cart': Cart,
   '/orders': Orders,
+  '/inventory': Inventory,
   '/login': Login,
   '/signup': Signup
 }
@@ -40,6 +54,7 @@ function Header() {
         ${user ? `
           <a href="/cart" class="${path === '/cart' ? 'active' : ''}" onclick="event.preventDefault(); navigate('/cart')">Cart</a>
           <a href="/orders" class="${path === '/orders' ? 'active' : ''}" onclick="event.preventDefault(); navigate('/orders')">Orders</a>
+          <a href="/inventory" class="${path === '/inventory' ? 'active' : ''}" onclick="event.preventDefault(); navigate('/inventory')">Inventory</a>
           <span style="margin-left: 1rem; color: var(--text-color); font-weight: 600;">${user.customerName}</span>
           <button class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;" onclick="logout()">Logout</button>
         ` : `
@@ -61,6 +76,7 @@ async function Home() {
     if (!response.ok) throw new Error('Failed to fetch products')
     const products = await response.json()
 
+    productsCache = products
     if (products.length === 0) {
       productsHtml = '<div class="loading">No products found.</div>'
     } else {
@@ -163,14 +179,38 @@ async function Cart() {
     navigate('/login')
     return ''
   }
+  let cartHtml = '<div class="loading">Loading cart...</div>'
+  try {
+    const res = await fetch(`${API.cart}/api/cart/${state.user.customerId}`)
+    if (res.ok) {
+      const cart = await res.json()
+      const items = (cart && cart.lineitem) || []
+      if (items.length === 0) {
+        cartHtml = '<p>Your cart is empty.</p>'
+      } else {
+        const total = items.reduce((s, i) => s + (i.quantity || 0) * (i.price || 0), 0)
+        cartHtml = `
+          ${items.map(i => `
+            <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--border-color, #eee);">
+              <span>${i.productName || ('Product ' + i.productId)}</span>
+              <span>x${i.quantity}</span>
+              <span>$${((i.price || 0) * i.quantity).toFixed(2)}</span>
+            </div>`).join('')}
+          <div style="margin:1rem 0;"><strong>Total: $${total.toFixed(2)}</strong></div>
+          <button class="btn btn-primary" onclick="placeOrder()">Place Order</button>
+        `
+      }
+    } else {
+      cartHtml = '<p>Your cart is empty.</p>'
+    }
+  } catch (e) {
+    cartHtml = '<p>Could not load cart.</p>'
+  }
   return `
     ${Header()}
-    <main>
+    <main style="max-width: 700px; margin: 0 auto;">
       <h2>Your Cart</h2>
-      <div class="card" style="margin-top: 1rem;">
-        <p>Cart functionality is under construction.</p>
-        <button class="btn btn-primary" style="margin-top: 1rem;" onclick="navigate('/')">Continue Shopping</button>
-      </div>
+      ${cartHtml}
     </main>
   `
 }
@@ -180,13 +220,53 @@ async function Orders() {
     navigate('/login')
     return ''
   }
+  let ordersHtml = '<div class="loading">Loading orders...</div>'
+  try {
+    const res = await fetch(`${API.shipping}/customer/${state.user.customerId}/orders`)
+    if (!res.ok) throw new Error('Failed to load orders')
+    const data = await res.json()
+    const orders = data.orders || []
+    if (orders.length === 0) {
+      ordersHtml = '<p>No orders yet.</p>'
+    } else {
+      ordersHtml = orders.map(o => {
+        const items = (o.lineitem || []).map(i => `<li>${i.productName || ('Product ' + i.productId)} x${i.quantity}</li>`).join('')
+        return `
+          <div class="card" style="margin-top: 1rem; padding: 1rem;">
+            <strong>Order #${o.orderid}</strong>
+            <ul style="margin: 0.5rem 0;">${items || '<li>No items</li>'}</ul>
+            <button class="btn" onclick="fetchOrderDetail(${o.orderid})">View details</button>
+            <div id="order-detail-${o.orderid}"></div>
+          </div>
+        `
+      }).join('')
+    }
+  } catch (e) {
+    ordersHtml = '<p>Could not load orders.</p>'
+  }
   return `
     ${Header()}
-    <main>
+    <main style="max-width: 700px; margin: 0 auto;">
       <h2>Your Orders</h2>
-      <div class="card" style="margin-top: 1rem;">
-        <p>Order history is under construction.</p>
-      </div>
+      ${ordersHtml}
+    </main>
+  `
+}
+
+async function Inventory() {
+  return `
+    ${Header()}
+    <main style="max-width: 500px; margin: 0 auto;">
+      <h2>Inventory Lookup</h2>
+      <p style="color: var(--text-secondary);">Enter an Inventory ID to check current stock.</p>
+      <form onsubmit="checkInventory(event)">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; margin-bottom: 0.5rem;">Inventory ID</label>
+          <input type="number" name="inventoryId" placeholder="Enter Inventory ID" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Check Stock</button>
+      </form>
+      <div id="inventory-result" style="margin-top: 1rem;"></div>
     </main>
   `
 }
@@ -251,13 +331,86 @@ window.addToCart = async (productId) => {
     navigate('/login')
     return
   }
+  const product = productsCache.find(p => p.productId === productId)
+  const cartId = state.user.customerId
+  let lineitem = []
   try {
-    // Example POST to cart service
-    // const res = await fetch('/api/cartservice/cart', { method: 'POST', body: JSON.stringify({ productId, quantity: 1 }) })
-    console.log(`Adding product ${productId} to cart`)
-    alert(`Product ${productId} added to cart! (Simulation)`)
+    const res = await fetch(`${API.cart}/api/cart/${cartId}`)
+    if (res.ok) {
+      const cart = await res.json()
+      lineitem = (cart && cart.lineitem) || []
+    }
+  } catch (e) { /* treat as a new cart */ }
+
+  const existing = lineitem.find(i => i.productId === productId)
+  if (existing) {
+    existing.quantity += 1
+  } else {
+    lineitem.push({ productId, productName: product.productName, quantity: 1, price: Math.round(product.productPrice || 0) })
+  }
+  const payload = { cartid: cartId, lineitem }
+  const headers = { 'Content-Type': 'application/json' }
+  try {
+    let res = await fetch(`${API.cart}/api/cart/${cartId}`, { method: 'PUT', headers, body: JSON.stringify(payload) })
+    if (!res.ok) {
+      // cart may not exist yet - create it
+      res = await fetch(`${API.cart}/api/cart`, { method: 'POST', headers, body: JSON.stringify(payload) })
+    }
+    if (res.ok) {
+      alert('Added to cart!')
+    } else {
+      alert('Failed to add to cart')
+    }
   } catch (e) {
     alert('Failed to add to cart')
+  }
+}
+
+window.placeOrder = async () => {
+  try {
+    const res = await fetch(`${API.shipping}/customer/${state.user.customerId}/order`, { method: 'POST' })
+    if (!res.ok) throw new Error('Failed to place order')
+    const order = await res.json()
+    alert(`Order #${order.orderid} placed successfully!`)
+    navigate('/orders')
+  } catch (e) {
+    alert('Order failed: ' + e.message)
+  }
+}
+
+window.fetchOrderDetail = async (orderId) => {
+  const el = document.querySelector(`#order-detail-${orderId}`)
+  if (!el) return
+  try {
+    const res = await fetch(`${API.order}/api/order/${orderId}`)
+    if (!res.ok) throw new Error('not found')
+    const order = await res.json()
+    const items = (order.lineitem || [])
+      .map(i => `<li>${i.productName || ('Product ' + i.productId)} x${i.quantity} @ $${i.price}</li>`)
+      .join('')
+    el.innerHTML = `<ul>${items || '<li>No items</li>'}</ul>`
+  } catch (e) {
+    el.innerHTML = '<em>Order details unavailable.</em>'
+  }
+}
+
+window.checkInventory = async (event) => {
+  event.preventDefault()
+  const id = new FormData(event.target).get('inventoryId')
+  const el = document.querySelector('#inventory-result')
+  if (!el) return
+  el.innerHTML = 'Checking...'
+  try {
+    const res = await fetch(`${API.inventory}/api/inventory/${id}`)
+    if (!res.ok) throw new Error('not found')
+    const inv = await res.json()
+    el.innerHTML = `<div class="card" style="padding: 1rem;">
+      <strong>Inventory #${inv.inventoryId}</strong><br>
+      Product ID: ${inv.productId}<br>
+      Quantity in stock: ${inv.quantity}
+    </div>`
+  } catch (e) {
+    el.innerHTML = '<em>No inventory record found for that ID.</em>'
   }
 }
 
