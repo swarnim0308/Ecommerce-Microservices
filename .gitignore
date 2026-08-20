@@ -6,3 +6,6 @@
 
 # Ignore log files
 **/*.log
+
+# Local verification reference (not committed)
+VERIFY_CURLS.md
