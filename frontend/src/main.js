@@ -3,7 +3,16 @@ import './style.css'
 const app = document.querySelector('#app')
 
 const state = {
-  user: JSON.parse(localStorage.getItem('user')) || null
+  user: JSON.parse(localStorage.getItem('user')) || null,
+  token: localStorage.getItem('token') || null
+}
+
+// Headers for authenticated requests; the gateway requires a Bearer token
+// on every route except public ones (products, signup, login).
+function authHeaders(extra = {}) {
+  const headers = { 'Content-Type': 'application/json', ...extra }
+  if (state.token) headers['Authorization'] = 'Bearer ' + state.token
+  return headers
 }
 
 // Backend service endpoints, proxied to the API Gateway on :8080.
@@ -135,9 +144,12 @@ async function Login() {
         <h2 style="margin-bottom: 1.5rem;">Login</h2>
         <form onsubmit="handleLogin(event)">
           <div style="margin-bottom: 1rem;">
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Customer ID</label>
-            <input type="number" name="customerId" placeholder="Enter your Customer ID" required>
-            <small style="color: var(--text-secondary);">Use the ID you received upon signup.</small>
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email Address</label>
+            <input type="email" name="customerEmail" placeholder="john@example.com" required>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Password</label>
+            <input type="password" name="password" placeholder="Enter your password" required>
           </div>
           <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
         </form>
@@ -164,6 +176,10 @@ async function Signup() {
             <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Email Address</label>
             <input type="email" name="customerEmail" placeholder="john@example.com" required>
           </div>
+          <div style="margin-bottom: 1rem;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Password</label>
+            <input type="password" name="password" placeholder="Create a password" required>
+          </div>
           <button type="submit" class="btn btn-primary" style="width: 100%;">Sign Up</button>
         </form>
         <p style="margin-top: 1rem; text-align: center;">
@@ -181,7 +197,7 @@ async function Cart() {
   }
   let cartHtml = '<div class="loading">Loading cart...</div>'
   try {
-    const res = await fetch(`${API.cart}/api/cart/${state.user.customerId}`)
+    const res = await fetch(`${API.cart}/api/cart/${state.user.customerId}`, { headers: authHeaders() })
     if (res.ok) {
       const cart = await res.json()
       const items = (cart && cart.lineitem) || []
@@ -222,7 +238,7 @@ async function Orders() {
   }
   let ordersHtml = '<div class="loading">Loading orders...</div>'
   try {
-    const res = await fetch(`${API.shipping}/customer/${state.user.customerId}/orders`)
+    const res = await fetch(`${API.shipping}/customer/${state.user.customerId}/orders`, { headers: authHeaders() })
     if (!res.ok) throw new Error('Failed to load orders')
     const data = await res.json()
     const orders = data.orders || []
@@ -275,16 +291,25 @@ async function Inventory() {
 window.handleLogin = async (event) => {
   event.preventDefault()
   const formData = new FormData(event.target)
-  const customerId = formData.get('customerId')
+  const data = {
+    customerEmail: formData.get('customerEmail'),
+    password: formData.get('password')
+  }
 
   try {
-    const res = await fetch(`/api/customerservice/customer/searchCustomer/${customerId}`)
-    if (!res.ok) throw new Error('Customer not found')
-    const user = await res.json()
+    const res = await fetch('/api/customerservice/customer/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    if (!res.ok) throw new Error('Invalid email or password')
+    const { token, customer } = await res.json()
 
-    state.user = user
-    localStorage.setItem('user', JSON.stringify(user))
-    alert(`Welcome back, ${user.customerName}!`)
+    state.user = customer
+    state.token = token
+    localStorage.setItem('user', JSON.stringify(customer))
+    localStorage.setItem('token', token)
+    alert(`Welcome back, ${customer.customerName}!`)
     navigate('/')
   } catch (e) {
     alert('Login failed: ' + e.message)
@@ -297,6 +322,7 @@ window.handleSignup = async (event) => {
   const data = {
     customerName: formData.get('customerName'),
     customerEmail: formData.get('customerEmail'),
+    password: formData.get('password'),
     // Default empty addresses for now as per entity structure
     customerBillingAddress: null,
     customerShippingAddress: null
@@ -312,7 +338,7 @@ window.handleSignup = async (event) => {
     if (!res.ok) throw new Error('Signup failed')
     const newUser = await res.json()
 
-    alert(`Account created! Your Customer ID is ${newUser.customerId}. Please login with this ID.`)
+    alert(`Account created! Please login with your email and password.`)
     navigate('/login')
   } catch (e) {
     alert('Signup failed: ' + e.message)
@@ -321,7 +347,9 @@ window.handleSignup = async (event) => {
 
 window.logout = () => {
   state.user = null
+  state.token = null
   localStorage.removeItem('user')
+  localStorage.removeItem('token')
   navigate('/login')
 }
 
@@ -335,7 +363,7 @@ window.addToCart = async (productId) => {
   const cartId = state.user.customerId
   let lineitem = []
   try {
-    const res = await fetch(`${API.cart}/api/cart/${cartId}`)
+    const res = await fetch(`${API.cart}/api/cart/${cartId}`, { headers: authHeaders() })
     if (res.ok) {
       const cart = await res.json()
       lineitem = (cart && cart.lineitem) || []
@@ -349,12 +377,11 @@ window.addToCart = async (productId) => {
     lineitem.push({ productId, productName: product.productName, quantity: 1, price: Math.round(product.productPrice || 0) })
   }
   const payload = { cartid: cartId, lineitem }
-  const headers = { 'Content-Type': 'application/json' }
   try {
-    let res = await fetch(`${API.cart}/api/cart/${cartId}`, { method: 'PUT', headers, body: JSON.stringify(payload) })
+    let res = await fetch(`${API.cart}/api/cart/${cartId}`, { method: 'PUT', headers: authHeaders(), body: JSON.stringify(payload) })
     if (!res.ok) {
       // cart may not exist yet - create it
-      res = await fetch(`${API.cart}/api/cart`, { method: 'POST', headers, body: JSON.stringify(payload) })
+      res = await fetch(`${API.cart}/api/cart`, { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) })
     }
     if (res.ok) {
       alert('Added to cart!')
@@ -368,7 +395,7 @@ window.addToCart = async (productId) => {
 
 window.placeOrder = async () => {
   try {
-    const res = await fetch(`${API.shipping}/customer/${state.user.customerId}/order`, { method: 'POST' })
+    const res = await fetch(`${API.shipping}/customer/${state.user.customerId}/order`, { method: 'POST', headers: authHeaders() })
     if (!res.ok) throw new Error('Failed to place order')
     const order = await res.json()
     alert(`Order #${order.orderid} placed successfully!`)
@@ -382,7 +409,7 @@ window.fetchOrderDetail = async (orderId) => {
   const el = document.querySelector(`#order-detail-${orderId}`)
   if (!el) return
   try {
-    const res = await fetch(`${API.order}/api/order/${orderId}`)
+    const res = await fetch(`${API.order}/api/order/${orderId}`, { headers: authHeaders() })
     if (!res.ok) throw new Error('not found')
     const order = await res.json()
     const items = (order.lineitem || [])
@@ -401,7 +428,7 @@ window.checkInventory = async (event) => {
   if (!el) return
   el.innerHTML = 'Checking...'
   try {
-    const res = await fetch(`${API.inventory}/api/inventory/${id}`)
+    const res = await fetch(`${API.inventory}/api/inventory/${id}`, { headers: authHeaders() })
     if (!res.ok) throw new Error('not found')
     const inv = await res.json()
     el.innerHTML = `<div class="card" style="padding: 1rem;">

@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.ms.customer.dto.LoginRequest;
+import com.ms.customer.dto.LoginResponse;
 import com.ms.customer.entity.Customer;
 import com.ms.customer.exception.IdNotFoundException;
 import com.ms.customer.service.CustomerServiceImpl;
@@ -31,6 +33,14 @@ public class Controller {
 	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, value = "/addCustomer")
 	public ResponseEntity<Customer> addCustomer(@RequestBody Customer customer) {
 		return new ResponseEntity<Customer>(customerService.save(customer), HttpStatus.CREATED);
+	}
+
+	// Post Mapping - Login and issue JWT
+	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, value = "/login")
+	public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) throws IdNotFoundException {
+		String token = customerService.login(loginRequest.getCustomerEmail(), loginRequest.getPassword());
+		Customer customer = customerService.findCustomerByEmail(loginRequest.getCustomerEmail());
+		return ResponseEntity.ok(new LoginResponse(token, customer));
 	}
 
 	// Get Mapping - Search Customer
