@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,15 +38,23 @@ public class CustomerController {
 	private RestTemplate template;
 	@Autowired
 	private CustomerOrderRepository customerOrderRepository;
-	
+
+	@Autowired
+	private CircuitBreakerFactory<?, ?> circuitBreakerFactory;
+
 	@GetMapping("/hello")
 	public String hello() {
 		return "Hello from composite Service";
 	}
 	//This API is used by external client to create a customer.
 	@PostMapping("/")
-	//@HystrixCommand(fallbackMethod = "fallbackfunction")
 	public ResponseEntity<?> createCustomer(@RequestBody CustomerVo customerVo){
+		return circuitBreakerFactory.create("createCustomer").run(
+				() -> doCreateCustomer(customerVo),
+				t -> ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Customer/Cart service unavailable. Please retry."));
+	}
+
+	private ResponseEntity<?> doCreateCustomer(@RequestBody CustomerVo customerVo){
 		
 		
 		String customerBaseUrl = getBaseURL("Customer-Service");

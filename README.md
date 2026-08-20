@@ -192,20 +192,30 @@ Environment variables used in Docker (see `docker-compose.yml`):
 ├── shipping-service/
 ├── config-properties/       # Externalized config (Docker native profile)
 ├── docker-compose.yml
-├── frontend/                # Vite starter (not wired to backend)
-└── hystrix-server/          # Legacy; not included in Docker Compose
+├── frontend/                # Vite storefront, fully wired to the API gateway
+└── hystrix-server/          # Legacy Hystrix dashboard; deprecated (replaced by Resilience4j)
 ```
 
 ---
 
-## Known Limitations
+## Resilience, Health & Seed Data
 
-- **No root Maven POM** — each service is built independently
-- **Shared database** — all services use one PostgreSQL schema; not production-isolated
-- **Hystrix server** — present in repo but deprecated and not in Docker Compose
-- **Frontend** — fully wired to the API gateway (products, customer, cart, order, inventory, shipping)
-- **Swagger** — removed; use Postman collection instead
-- **Docker requires pre-built JARs** — Dockerfiles do not compile source inside the image
+### Resilience4j circuit breaker (replaces Hystrix)
+
+The shipping-service composite calls (create product, create customer) are wrapped in
+Resilience4j circuit breakers via `CircuitBreakerFactory`. When a downstream service is
+down, the call returns a graceful `503` fallback instead of failing hard.
+
+### Health / liveness / readiness probes
+
+Every service exposes actuator health, liveness and readiness endpoints
+(`management.endpoint.health.probes.enabled=true`). Kubernetes-style probes are
+available at `/actuator/health/liveness` and `/actuator/health/readiness`.
+
+### Seed data on startup
+
+- `product-service` and `inventory-service` seed demo products and matching stock on
+  first boot (idempotent — skips if data already present).
 
 ---
 
@@ -214,4 +224,6 @@ Environment variables used in Docker (see `docker-compose.yml`):
 - Java 17, Spring Boot 3.2.4, Spring Cloud 2023.0.1
 - Netflix Eureka, Spring Cloud Config, Spring Cloud Gateway
 - Spring Data JPA, PostgreSQL 15
+- Resilience4j (circuit breaker) on shipping-service
+- JWT (jjwt) + BCrypt for authentication
 - Docker Compose 3.x
