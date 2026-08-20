@@ -8,4 +8,6 @@ import com.ms.customer.entity.Customer;
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, Integer> {
 
+	java.util.Optional<Customer> findByCustomerEmail(String customerEmail);
+
 }

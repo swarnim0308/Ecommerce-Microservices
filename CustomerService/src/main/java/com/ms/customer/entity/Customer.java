@@ -38,6 +38,12 @@ public class Customer implements Serializable {
 	@Column(name = "Customer_Email_Id")
 	private String customerEmail;
 
+	@Column(name = "Customer_Password")
+	private String password;
+
+	@Column(name = "Customer_Role")
+	private String role;
+
 	@OneToOne(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
 	@JoinColumn(name = "Billing_Address_Id", referencedColumnName = "addressId")
 	private Address customerBillingAddress;

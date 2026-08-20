@@ -13,4 +13,8 @@ public interface CustomerService {
 
 	Customer updateCustomerById(Customer customer, int id) throws IdNotFoundException;
 
+	Customer findCustomerByEmail(String email) throws IdNotFoundException;
+
+	String login(String email, String password) throws IdNotFoundException;
+
 }

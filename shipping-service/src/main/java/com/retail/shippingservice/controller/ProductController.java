@@ -2,6 +2,7 @@ package com.retail.shippingservice.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +26,8 @@ public class ProductController {
 	private EurekaClient client;
 	@Autowired
 	private RestTemplateBuilder templateBuilder;
+	@Autowired
+	private CircuitBreakerFactory<?, ?> circuitBreakerFactory;
 	
 	@GetMapping("/say")
 	public String hello() {
@@ -34,6 +37,12 @@ public class ProductController {
 	//This API is used by external client to create a product
 	@PostMapping("/")
 	public ResponseEntity<?> createProduct(@RequestBody ProductVo productVo){
+		return circuitBreakerFactory.create("createProduct").run(
+				() -> doCreateProduct(productVo),
+				t -> ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Product/Inventory service unavailable. Please retry."));
+	}
+
+	private ResponseEntity<?> doCreateProduct(@RequestBody ProductVo productVo){
 		
 		RestTemplate template = templateBuilder.build();
 		
