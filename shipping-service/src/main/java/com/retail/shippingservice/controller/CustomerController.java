@@ -91,40 +91,87 @@ public class CustomerController {
 		return new ResponseEntity<CartVo>(template.getForEntity(cartUpdateUrl, CartVo.class).getBody(), HttpStatus.OK);
 	}
 	
-	//placing order: remaining:update inventory, verify product
+	//placing order: orchestration saga with compensating actions
 	@PostMapping("{customerId}/order")
 	public ResponseEntity<?> placingOrder(@PathVariable Long customerId){
-		String customerBaseUrl = getBaseURL("Customer-Service");
-		String getCustomerUrl = customerBaseUrl+"customer/searchCustomer/"+customerId;
-		System.err.println(getCustomerUrl);
-		ResponseEntity<CustomerVo> customerResponse =  template.getForEntity(getCustomerUrl, CustomerVo.class);
-		CustomerVo theCustomer = customerResponse.getBody();
-		
-		String cartBaseUrl = getBaseURL("Cart-Service");
-		String getCartUrl = cartBaseUrl+ "api/cart/"+customerId;
-		ResponseEntity<CartVo> cartResponse = template.getForEntity(getCartUrl, CartVo.class);
-		CartVo theCart = cartResponse.getBody();
-		System.out.println("@@@@@@@@@@@@");
-		System.out.println(theCart);
-		OrderVo orderVo = new OrderVo();
-		//List<LineItemVo>
-		orderVo.setLineitem(theCart.getLineitem()) ;
-		System.err.println(orderVo);
-		
-		String orderBaseUrl = getBaseURL("Order-Service");
-		String saveOrderUrl = orderBaseUrl + "api/order";
-		ResponseEntity<OrderVo> orderResponse = template.postForEntity(saveOrderUrl, orderVo, OrderVo.class);
-		OrderVo order = orderResponse.getBody();
-		
-		CustomerOrder customerOrder = new CustomerOrder();
-		customerOrder.setCustomerID(customerId);
-		customerOrder.setOrderID((long) order.getOrderid());
-		customerOrderRepository.save(customerOrder);
-		
-		//empty the cart
-		emptyCart(customerId);
-		
-		return new ResponseEntity<OrderVo>(order, orderResponse.getStatusCode());
+		Long createdOrderId = null;
+		CartVo originalCart = null;
+		try {
+			// 1. Resolve customer
+			String customerBaseUrl = getBaseURL("Customer-Service");
+			String getCustomerUrl = customerBaseUrl+"customer/searchCustomer/"+customerId;
+			System.err.println(getCustomerUrl);
+			ResponseEntity<CustomerVo> customerResponse =  template.getForEntity(getCustomerUrl, CustomerVo.class);
+			CustomerVo theCustomer = customerResponse.getBody();
+			
+			// 2. Resolve cart (keep original for compensation)
+			String cartBaseUrl = getBaseURL("Cart-Service");
+			String getCartUrl = cartBaseUrl+ "api/cart/"+customerId;
+			ResponseEntity<CartVo> cartResponse = template.getForEntity(getCartUrl, CartVo.class);
+			CartVo theCart = cartResponse.getBody();
+			originalCart = theCart;
+			System.out.println("@@@@@@@@@@@@");
+			System.out.println(theCart);
+			OrderVo orderVo = new OrderVo();
+			//List<LineItemVo>
+			orderVo.setLineitem(theCart.getLineitem()) ;
+			System.err.println(orderVo);
+			
+			// 3. Create order
+			String orderBaseUrl = getBaseURL("Order-Service");
+			String saveOrderUrl = orderBaseUrl + "api/order";
+			ResponseEntity<OrderVo> orderResponse = template.postForEntity(saveOrderUrl, orderVo, OrderVo.class);
+			OrderVo order = orderResponse.getBody();
+			createdOrderId = (long) order.getOrderid();
+			
+			// 4. Persist customer-order link
+			CustomerOrder customerOrder = new CustomerOrder();
+			customerOrder.setCustomerID(customerId);
+			customerOrder.setOrderID(createdOrderId);
+			customerOrderRepository.save(customerOrder);
+			
+			// 5. Empty the cart
+			emptyCart(customerId);
+			
+			return new ResponseEntity<OrderVo>(order, orderResponse.getStatusCode());
+		} catch (Exception e) {
+			System.err.println("[saga] placing order failed, compensating: " + e.getMessage());
+			compensateOrder(customerId, createdOrderId, originalCart);
+			return new ResponseEntity<String>("Order placement failed and was rolled back.", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	
+	// Compensating actions: undo steps already completed.
+	private void compensateOrder(Long customerId, Long createdOrderId, CartVo originalCart) {
+		// Undo step 4: remove customer-order link
+		if (createdOrderId != null) {
+			try {
+				List<CustomerOrder> links = customerOrderRepository.findByCustomerID(customerId);
+				links.stream()
+					.filter(c -> c.getOrderID() != null && c.getOrderID().equals(createdOrderId))
+					.forEach(customerOrderRepository::delete);
+			} catch (Exception e) {
+				System.err.println("[saga] failed to remove customer-order link: " + e.getMessage());
+			}
+		}
+		// Undo step 3: delete the order
+		if (createdOrderId != null) {
+			try {
+				String orderBaseUrl = getBaseURL("Order-Service");
+				template.delete(orderBaseUrl + "api/deleteorder/" + createdOrderId);
+			} catch (Exception e) {
+				System.err.println("[saga] failed to delete order " + createdOrderId + ": " + e.getMessage());
+			}
+		}
+		// Undo step 5 / restore cart
+		if (originalCart != null) {
+			try {
+				String cartBaseUrl = getBaseURL("Cart-Service");
+				template.put(cartBaseUrl + "api/cart/" + customerId, originalCart);
+			} catch (Exception e) {
+				System.err.println("[saga] failed to restore cart: " + e.getMessage());
+			}
+		}
 	}
 	
 	@GetMapping("{customerId}/orders")

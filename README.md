@@ -18,14 +18,30 @@ A distributed e-commerce backend built with **Java 17**, **Spring Boot 3.2**, an
 | **Cart Service** | 9004 | Shopping cart |
 | **Order Service** | 9005 | Order processing |
 | **Shipping Service** | 9006 | Composite orchestration (Product + Inventory) |
+| **Zipkin** | 9411 | Distributed tracing (Micrometer) |
 
 ```
-Client → API Gateway (8080) → Eureka (8761) → Microservices (9001–9006)
-                                    ↑
-                            Config Server (8888)
-                                    ↑
-                              PostgreSQL (5432)
+Client ──▶ API Gateway (8080) ──▶ Eureka (8761) ──▶ Microservices (9001–9006)
+                 │  ▲                           │              │
+                 │  └─────── Config Server (8888) ──┘            │
+                 │                                              │
+                 ▼                    Postgres (5432) ◀──── Postgres (5432)
+              Zipkin (9411) ◀─────────── spans ────────────────┘
 ```
+
+Every service reports trace spans (Micrometer Tracing + Brave) to **Zipkin** so a single
+request can be followed across the gateway and all downstream microservices.
+
+### Place-order flow (orchestration saga)
+
+1. `POST /api/shoppingservice/customer/{id}/order` → Shipping-Service.
+2. Shipping-Service resolves the customer (Customer-Service) and the cart (Cart-Service).
+3. It creates the order (Order-Service) and records the customer→order link.
+4. It empties the cart (Cart-Service) and returns the order.
+
+If any step fails, **compensating actions** undo the completed steps: the customer-order
+link is removed, the order is deleted, and the cart is restored — giving an at-least-once
+saga with rollback.
 
 ---
 
@@ -159,7 +175,8 @@ Path rewrite strips the `/api/<service>/` prefix before forwarding. With JWT ena
 | Order | `GET /api/hello` |
 | Shipping | `GET /products/say` |
 
-Use `ECommerceApplication.postman_collection.json` for full API examples.
+Use `ECommerceApplication.postman_collection.json` for full API examples, and
+`VERIFY_CURLS.md` for the curl commands used to verify each feature end-to-end.
 
 ---
 

@@ -139,3 +139,56 @@ backend or remove its use in `frontend/src/main.js`.
 - Bring services up, wait for full Eureka registration, then (re)start the gateway.
 - When two services race at startup (config/bootstrap or Eureka registration), the
   dependent service's first boot may fail — restart it once its dependency is healthy.
+
+---
+
+## 10. Health probes didn't show until actuator exposure was configured
+
+**Symptom:** `/actuator/health` returned only `UP` without `liveness`/`readiness` groups.
+
+**Fix:** Set `management.endpoint.health.probes.enabled=true` and expose `health,info`
+(or `metrics,circuitbreakers` for shipping). Kubernetes-style probes are then available
+at `/actuator/health/liveness` and `/actuator/health/readiness`.
+
+---
+
+## 11. Resilience4j replaces Hystrix
+
+**Why:** Hystrix is deprecated and the `hystrix-server` is not in Docker Compose.
+
+**Fix:** Added `spring-cloud-starter-circuitbreaker-resilience4j` to shipping-service and
+wrapped the composite calls (create customer, create product) with `CircuitBreakerFactory`.
+A downstream failure now returns a graceful `503` fallback instead of a hard error.
+`/actuator/circuitbreakers` exposes breaker state.
+
+---
+
+## 12. Seed data — idempotent CommandLineRunner
+
+**How:** `DataSeeder` beans in product-service and inventory-service insert demo data only
+when the table is empty (`repository.count() == 0`), so `docker compose up` gives a
+demo-ready storefront without manual curl.
+
+---
+
+## 13. Distributed tracing (Micrometer + Zipkin)
+
+**How:** Added `micrometer-tracing-bridge-brave` + `zipkin-reporter-brave` to every service,
+a `zipkin` service to docker-compose (port 9411), and
+`management.zipkin.tracing.endpoint=http://zipkin:9411/api/v2/spans` + sampling probability
+in each config-properties file.
+
+**Gotcha:** A service won't emit spans to Zipkin until it restarts with the new jars and
+re-reads config. Verify with `curl localhost:9411/api/v2/services` — expect all service
+names to appear after a request.
+
+---
+
+## 14. Orchestration saga for place-order
+
+**Why:** The composite place-order flow (resolve customer → read cart → create order →
+empty cart) is not atomic across services.
+
+**Fix:** Wrapped `placingOrder` in a saga with compensating actions: on failure it removes
+the customer-order link, deletes the created order, and restores the cart. Verified both
+the failure path (empty cart → rollback) and the happy path (order 201 created).
