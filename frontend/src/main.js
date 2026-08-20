@@ -86,7 +86,7 @@ async function Home() {
               <div class="card">
                 <img src="${product.imageUrl || `https://placehold.co/400x300?text=${encodeURIComponent(product.productName || 'Product')}`}" alt="${product.productName}" class="product-image">
                 <div class="product-title">${product.productName || 'Unknown Product'}</div>
-                <div class="product-price">$${product.productPrice || '0.00'}</div>
+                <div class="product-price">₹${product.productPrice || '0.00'}</div>
                 <div style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">${product.productDescription || ''}</div>
                 <button class="btn btn-primary" onclick="addToCart(${product.productId})">Add to Cart</button>
               </div>
@@ -110,7 +110,7 @@ async function Home() {
           <div class="card">
             <img src="https://placehold.co/400x300?text=Product+${i}" alt="Product ${i}" class="product-image">
             <div class="product-title">Premium Item ${i}</div>
-            <div class="product-price">$${(i * 24.99).toFixed(2)}</div>
+            <div class="product-price">₹${(i * 24.99).toFixed(2)}</div>
             <div style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 1rem;">High quality premium item for your needs.</div>
             <button class="btn btn-primary" onclick="addToCart(${i})">Add to Cart</button>
           </div>
@@ -194,9 +194,9 @@ async function Cart() {
             <div style="display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid var(--border-color, #eee);">
               <span>${i.productName || ('Product ' + i.productId)}</span>
               <span>x${i.quantity}</span>
-              <span>$${((i.price || 0) * i.quantity).toFixed(2)}</span>
+              <span>₹${((i.price || 0) * i.quantity).toFixed(2)}</span>
             </div>`).join('')}
-          <div style="margin:1rem 0;"><strong>Total: $${total.toFixed(2)}</strong></div>
+          <div style="margin:1rem 0;"><strong>Total: ₹${total.toFixed(2)}</strong></div>
           <button class="btn btn-primary" onclick="placeOrder()">Place Order</button>
         `
       }
@@ -386,7 +386,7 @@ window.fetchOrderDetail = async (orderId) => {
     if (!res.ok) throw new Error('not found')
     const order = await res.json()
     const items = (order.lineitem || [])
-      .map(i => `<li>${i.productName || ('Product ' + i.productId)} x${i.quantity} @ $${i.price}</li>`)
+      .map(i => `<li>${i.productName || ('Product ' + i.productId)} x${i.quantity} @ ₹${i.price}</li>`)
       .join('')
     el.innerHTML = `<ul>${items || '<li>No items</li>'}</ul>`
   } catch (e) {
