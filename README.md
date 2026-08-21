@@ -43,6 +43,15 @@ If any step fails, **compensating actions** undo the completed steps: the custom
 link is removed, the order is deleted, and the cart is restored — giving an at-least-once
 saga with rollback.
 
+The composite **create** endpoints follow the same compensate-on-failure pattern:
+
+- `POST /api/shoppingservice/customer/` (create customer) creates the customer in
+  Customer-Service then a cart in Cart-Service. If the cart creation fails, the customer
+  is deleted so no orphan is left behind.
+- `POST /api/shoppingservice/products/` (create product) creates the product in
+  Product-Service then its inventory record in Inventory-Service. If the inventory call
+  fails, the product is deleted so no orphan is left behind.
+
 ---
 
 ## Prerequisites
@@ -146,6 +155,20 @@ A global `GlobalFilter` (`JwtValidationFilter`) on the API Gateway:
 The storefront (Vite) stores the token in `localStorage` and sends it as `Authorization: Bearer <token>` on all protected calls via a shared `authHeaders()` helper. Login uses email + password; signup collects a password. Logout clears the stored token.
 
 The shared HMAC secret lives in both `CustomerService.security.JwtUtil` and `zuul-api-gateway.JwtValidationFilter`. Change it in both places for production.
+
+**Production base URL.** By default the storefront calls the gateway through the Vite dev
+proxy on `:8080`. For a static deploy, set the build-time `VITE_API_BASE` env var to the
+gateway origin (e.g. `https://api.example.com`) and reverse-proxy `/api` there; the frontend
+prefixes every service path with it.
+
+---
+
+## Centralized exception handling
+
+Each service exposes a `@RestControllerAdvice` that returns a uniform error envelope
+`{timeStamp, statusCode, httpStatus, reason, message}` for both domain exceptions
+(e.g. `IdNotFoundException`, `ProductNotFound`) and any unexpected exception, instead of
+raw stack traces. Covers Customer-Service, Inventory-Service and Product-Service.
 
 ---
 

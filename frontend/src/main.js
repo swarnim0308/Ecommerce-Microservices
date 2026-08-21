@@ -15,15 +15,20 @@ function authHeaders(extra = {}) {
   return headers
 }
 
+// Base URL for the backend. In dev this is empty so requests go through the
+// Vite proxy to the gateway on :8080. In production, set VITE_API_BASE to the
+// gateway origin (e.g. https://api.example.com) and reverse-proxy /api there.
+const API_BASE = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')
+
 // Backend service endpoints, proxied to the API Gateway on :8080.
 // The gateway rewrites the /api/<service>/ prefix to each service's controller.
 const API = {
-  products: '/api/productservice',
-  customers: '/api/customerservice',
-  cart: '/api/cartservice',
-  inventory: '/api/inventoryservice',
-  order: '/api/orderservice',
-  shipping: '/api/shoppingservice'
+  products: `${API_BASE}/api/productservice`,
+  customers: `${API_BASE}/api/customerservice`,
+  cart: `${API_BASE}/api/cartservice`,
+  inventory: `${API_BASE}/api/inventoryservice`,
+  order: `${API_BASE}/api/orderservice`,
+  shipping: `${API_BASE}/api/shoppingservice`
 }
 
 let productsCache = []
@@ -81,7 +86,7 @@ async function Home() {
   try {
     // Attempt to fetch from the product service
     // Adjust the endpoint based on your actual Controller
-    const response = await fetch('/api/productservice/products')
+    const response = await fetch(`${API.products}/products`)
     if (!response.ok) throw new Error('Failed to fetch products')
     const products = await response.json()
 
@@ -297,7 +302,7 @@ window.handleLogin = async (event) => {
   }
 
   try {
-    const res = await fetch('/api/customerservice/customer/login', {
+    const res = await fetch(`${API.customers}/customer/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -329,7 +334,7 @@ window.handleSignup = async (event) => {
   }
 
   try {
-    const res = await fetch('/api/customerservice/customer/addCustomer', {
+    const res = await fetch(`${API.customers}/customer/addCustomer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)

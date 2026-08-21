@@ -68,9 +68,18 @@ public class CustomerController {
 		String cartBaseUrl = getBaseURL("Cart-Service");
 		cartBaseUrl += "/api/cart";
 		//template.put(cartBaseUrl, cartVo);
-		ResponseEntity<CartVo> newCartResponse = template.postForEntity(cartBaseUrl, cartVo, CartVo.class);
-		CartVo newCart = newCartResponse.getBody();
-		System.err.println(newCart);
+		try {
+			ResponseEntity<CartVo> newCartResponse = template.postForEntity(cartBaseUrl, cartVo, CartVo.class);
+			CartVo newCart = newCartResponse.getBody();
+			System.err.println(newCart);
+		} catch (Exception e) {
+			// Compensation: cart creation failed, roll back the created customer.
+			// Delete Customer-Service again so no orphaned customer is left behind.
+			String deleteCustomerUrl = getBaseURL("Customer-Service") + "/customer/deleteCustomer/" + customerID;
+			template.delete(deleteCustomerUrl);
+			System.err.println("[saga] createCustomer failed, compensating: deleted customer " + customerID);
+			throw e;
+		}
 		return new ResponseEntity<>(newCustomer, HttpStatus.OK);
 	}
 	
