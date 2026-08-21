@@ -66,6 +66,17 @@ closing the stock-update loop without a blocking call between the two services.
   the exchange/queue/routing-key are configurable via `app.rabbitmq.*` in the service
   `config-properties/*.properties` files.
 
+### Redis catalog cache
+
+Product-Service caches the catalog read (`GET /api/productservice/products`) in **Redis**.
+`ProductService.findAll()` is annotated `@Cacheable("products")`, and the write operations
+(`addProduct`, `updateProduct`, `deleteProductById`) are `@CacheEvict` so the cache stays
+fresh. A JSON serializer is configured with a 30-minute TTL.
+
+- Cache backend: `redis:7-alpine` container (port `6379`).
+- Enabled via `spring.cache.type=redis` in `config-properties/product-service.properties`.
+- Connection comes from `SPRING_DATA_REDIS_*` in the shared `service-env` anchor.
+
 ---
 
 ## Prerequisites
@@ -247,14 +258,13 @@ Environment variables used in Docker (see `docker-compose.yml`):
 ├── config-properties/       # Externalized config (Docker native profile)
 ├── docker-compose.yml
 ├── frontend/                # Vite storefront, fully wired to the API gateway
-└── hystrix-server/          # Legacy Hystrix dashboard; deprecated (replaced by Resilience4j)
 ```
 
 ---
 
 ## Resilience, Health & Seed Data
 
-### Resilience4j circuit breaker (replaces Hystrix)
+### Resilience4j circuit breaker
 
 The shipping-service composite calls (create product, create customer) are wrapped in
 Resilience4j circuit breakers via `CircuitBreakerFactory`. When a downstream service is
@@ -280,6 +290,7 @@ available at `/actuator/health/liveness` and `/actuator/health/readiness`.
 - Spring Data JPA, PostgreSQL 15
 - Resilience4j (circuit breaker) on shipping-service
 - RabbitMQ (Spring AMQP) for event-driven inventory decrement
+- Redis (Spring Cache) for the product catalog cache
 - Micrometer Tracing + Zipkin for distributed tracing
 - JWT (jjwt) + BCrypt for authentication
 - Docker Compose 3.x

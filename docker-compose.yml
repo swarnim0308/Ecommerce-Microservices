@@ -8,6 +8,8 @@ x-service-env: &service-env
   SPRING_RABBITMQ_PORT: "5672"
   SPRING_RABBITMQ_USERNAME: guest
   SPRING_RABBITMQ_PASSWORD: guest
+  SPRING_DATA_REDIS_HOST: redis
+  SPRING_DATA_REDIS_PORT: "6379"
 
 services:
   # --- Databases ---
@@ -177,6 +179,15 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    networks:
+      - ecommerce-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
     networks:
       - ecommerce-network
 

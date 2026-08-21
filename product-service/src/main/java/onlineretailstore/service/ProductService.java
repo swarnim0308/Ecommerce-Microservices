@@ -5,6 +5,8 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import onlineretailstore.entity.Product;
@@ -21,20 +23,24 @@ public class ProductService {
 		return productRepository.findById(productId).orElseThrow(() -> new ProductNotFound("Product Not found"));
 	}
 
+	@Cacheable(value = "products", key = "'all'")
 	public List<Product> findAll() {
 		return productRepository.findAll();
 	}
 
+	@CacheEvict(value = "products", key = "'all'")
 	public Product addProduct(Product product) {
 		Product addproduct = productRepository.save(product);
 		return addproduct;
 	}
 
+	@CacheEvict(value = "products", key = "'all'")
 	public Product updateProduct(Product product) {
 		Product updateproduct = productRepository.save(product);
 		return updateproduct;
 	}
 
+	@CacheEvict(value = "products", key = "'all'")
 	public void deleteProductById(Long productId) {
 		Product deleteProduct = productRepository.getOne(productId);
 		if (deleteProduct == null) {
