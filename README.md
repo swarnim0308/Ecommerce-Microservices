@@ -292,5 +292,8 @@ available at `/actuator/health/liveness` and `/actuator/health/readiness`.
 - RabbitMQ (Spring AMQP) for event-driven inventory decrement
 - Redis (Spring Cache) for the product catalog cache
 - Micrometer Tracing + Zipkin for distributed tracing
+- Prometheus + Grafana for metrics (Resilience4j circuit-breaker state, `/actuator/prometheus`)
+- JUnit 5 + Mockito (tests: gateway JWT filter, JwtUtil, inventory decrement)
+- CI via GitHub Actions (`.github/workflows/ci.yml`)
 - JWT (jjwt) + BCrypt for authentication
 - Docker Compose 3.x

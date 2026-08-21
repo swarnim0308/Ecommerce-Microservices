@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'spring-boot-services'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
+          - 'shipping-service:9006'
+          - 'zuul-api-gateway:8080'
+          - 'product-service:9002'
+          - 'Inventory-Service:9003'
+          - 'OrderService:9004'
+          - 'Cart-Entity:9005'
+          - 'CustomerService:9001'
