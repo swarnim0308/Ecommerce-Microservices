@@ -42,6 +42,18 @@ public class InventoryServiceImpl implements InventoryService {
 	}
 
 	@Override
+	public InventoryEntity decrementStock(long productId, int quantity) throws IdNotFoundException {
+		InventoryEntity inventory = inventoryRepository.findByProductId(productId)
+				.orElseThrow(() -> new IdNotFoundException("No inventory for productId " + productId));
+		int newQty = inventory.getQuantity() - quantity;
+		if (newQty < 0) {
+			throw new IdNotFoundException("Insufficient stock for productId " + productId);
+		}
+		inventory.setQuantity(newQty);
+		return inventoryRepository.save(inventory);
+	}
+
+	@Override
 	public void deleteInventoryById(int id) throws IdNotFoundException {
 		if (inventoryRepository.findById(id).isPresent()) {
 			inventoryRepository.deleteById(id);

@@ -52,6 +52,20 @@ The composite **create** endpoints follow the same compensate-on-failure pattern
   Product-Service then its inventory record in Inventory-Service. If the inventory call
   fails, the product is deleted so no orphan is left behind.
 
+### Event-driven inventory decrement (RabbitMQ)
+
+After a successful order placement, Shipping-Service publishes an **`order-placed`** event
+on RabbitMQ (`order.exchange` / `order.placed`). Inventory-Service listens on the
+`inventory.order.placed` queue and **decrements stock** for each line item's `productId`,
+closing the stock-update loop without a blocking call between the two services.
+
+- Publisher: `shipping-service` `CustomerController.placingOrder` (after the saga succeeds).
+- Consumer: `Inventory-Service` `OrderPlacedListener` → `InventoryService.decrementStock`.
+- Broker: `rabbitmq:3-management` container (AMQP `5672`, management UI `15672`).
+- Connection settings come from the shared `service-env` anchor in `docker-compose.yml`;
+  the exchange/queue/routing-key are configurable via `app.rabbitmq.*` in the service
+  `config-properties/*.properties` files.
+
 ---
 
 ## Prerequisites
@@ -265,5 +279,7 @@ available at `/actuator/health/liveness` and `/actuator/health/readiness`.
 - Netflix Eureka, Spring Cloud Config, Spring Cloud Gateway
 - Spring Data JPA, PostgreSQL 15
 - Resilience4j (circuit breaker) on shipping-service
+- RabbitMQ (Spring AMQP) for event-driven inventory decrement
+- Micrometer Tracing + Zipkin for distributed tracing
 - JWT (jjwt) + BCrypt for authentication
 - Docker Compose 3.x

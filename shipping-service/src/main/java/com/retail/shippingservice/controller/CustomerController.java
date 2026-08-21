@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.discovery.EurekaClient;
@@ -41,6 +42,9 @@ public class CustomerController {
 
 	@Autowired
 	private CircuitBreakerFactory<?, ?> circuitBreakerFactory;
+
+	@Autowired
+	private RabbitTemplate rabbitTemplate;
 
 	@GetMapping("/hello")
 	public String hello() {
@@ -141,7 +145,11 @@ public class CustomerController {
 			
 			// 5. Empty the cart
 			emptyCart(customerId);
-			
+
+			// 6. Publish order-placed event so Inventory-Service can decrement stock
+			rabbitTemplate.convertAndSend("order.exchange", "order.placed", theCart.getLineitem());
+			System.err.println("[rabbit] published order.placed for customer " + customerId);
+
 			return new ResponseEntity<OrderVo>(order, orderResponse.getStatusCode());
 		} catch (Exception e) {
 			System.err.println("[saga] placing order failed, compensating: " + e.getMessage());
