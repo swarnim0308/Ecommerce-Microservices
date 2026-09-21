@@ -217,6 +217,69 @@ datasource manually (URL `http://prometheus:9090`) on first use.
 
 ---
 
+## End-to-end verification results
+
+Last full run of the checklist in `VERIFY_CURLS.md`, against a stack built from `docker compose
+up -d --build`.
+
+| Flow | Check | Result |
+|------|-------|--------|
+| Health probes | `/actuator/health` + `/liveness` on 9002 | `UP`, groups `liveness`,`readiness` |
+| Seed data | `GET :9002/products` | 4 seeded products |
+| Seed data | `GET :9003/api/inventory/1` | `quantity:48` |
+| JWT signup | `POST /api/customerservice/customer/addCustomer` | `201`, password BCrypt-hashed |
+| JWT login | `POST /api/customerservice/customer/login` | token issued, `role:CUSTOMER` |
+| Auth deny | cart route, no token | `401` |
+| Auth allow | cart route, valid token | `404` (reaches service) |
+| Auth deny | cart route, forged token | `401` |
+| Saga happy path | create cart → `POST /api/shoppingservice/customer/{id}/order` | `201`, `orderid:7` |
+| RabbitMQ event | inventory after order | `48 → 46`, queue `inventory.order.placed` drained |
+| Redis cache | `redis-cli KEYS '*'` | `products::all` populated on read |
+| Redis eviction | add product, re-check keys | key evicted on write |
+| Tracing | `localhost:9411/api/v2/services` | all 7 services present |
+| Metrics | `localhost:9090/targets` | 7/7 `up` |
+
+Not covered by `VERIFY_CURLS.md`, verified separately:
+
+- **Frontend** — `npm run build` succeeds. There is **no test script**: `frontend/package.json`
+  defines only `dev`, `build`, `preview`.
+- **Circuit breaker** — `GET :9006/actuator/circuitbreakers` returns `{"circuitBreakers":{}}`
+  (empty), because no breaker has been triggered yet. It would populate after a downstream
+  failure is induced.
+
+### Open defect: an empty cart does not roll back
+
+`VERIFY_CURLS.md:119-124` documents that placing an order with a missing/empty cart returns
+`500` with `"Order placement failed and was rolled back."` That is **not** what happens.
+
+Placing a second order for a customer whose cart was already emptied returns:
+
+```
+{"orderid":8,"lineitem":[]}   // HTTP 201
+```
+
+A persisted order row with no line items is left behind (`select count(*) from orders` → 8),
+and a `order.placed` event is published with an empty payload. Shipping logs show
+`[rabbit] published order.placed` with no `[saga] placing order failed` line — so the catch
+block never ran.
+
+**Cause:** the documented `500`/rollback path only triggers when the cart returns **404**
+(cart missing entirely), which `CustomerController.placingOrder` catches as an exception.
+An existing-but-empty cart returns **200** with `{"cartid":9,"lineitem":[]}`, so no exception is
+thrown, `theCart.getLineitem()` is an empty list, and the saga reports success.
+
+To reproduce the documented rollback, request an order for a customer with no cart at all:
+
+```bash
+curl -o /dev/null -w "%{http_code}" localhost:9004/api/cart/9999
+# 404 -> this is the case that compensates
+```
+
+Fixing it means treating an empty line-item list as a failure in
+`placingOrder` (step 2, after the cart resolves) and routing it to `compensateOrder`. Not done.
+
+---
+
 ## Stopping
 
 ```powershell
