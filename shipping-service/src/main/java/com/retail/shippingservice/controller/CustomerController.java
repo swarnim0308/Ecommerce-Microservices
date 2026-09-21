@@ -125,6 +125,13 @@ public class CustomerController {
 			originalCart = theCart;
 			System.out.println("@@@@@@@@@@@@");
 			System.out.println(theCart);
+
+			// An empty cart must fail the saga: cart lookup returns 200 with an empty
+			// lineitem list, so without this check the order would be created with no items.
+			if (theCart == null || theCart.getLineitem() == null || theCart.getLineitem().isEmpty()) {
+				throw new IllegalStateException("Cart is empty.");
+			}
+
 			OrderVo orderVo = new OrderVo();
 			//List<LineItemVo>
 			orderVo.setLineitem(theCart.getLineitem()) ;
