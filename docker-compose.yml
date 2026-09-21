@@ -37,6 +37,12 @@ services:
     environment:
       EUREKA_CLIENT_REGISTERWITHEUREKA: "false"
       EUREKA_CLIENT_FETCHREGISTRY: "false"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
     networks:
       - ecommerce-network
 
@@ -53,6 +59,12 @@ services:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka/
     volumes:
       - ./config-properties:/config/config-properties
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     networks:
       - ecommerce-network
 
@@ -63,8 +75,10 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - service-registry
-      - config-server
+      service-registry:
+        condition: service_started
+      config-server:
+        condition: service_healthy
     environment:
       EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://service-registry:8761/eureka/
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
@@ -140,9 +154,12 @@ services:
     ports:
       - "9001:9001"
     depends_on:
-      - service-registry
-      - config-server
-      - postgres-db
+      service-registry:
+        condition: service_started
+      config-server:
+        condition: service_healthy
+      postgres-db:
+        condition: service_started
     environment:
       <<: *service-env
     networks:
@@ -155,9 +172,12 @@ services:
     ports:
       - "9006:9006"
     depends_on:
-      - service-registry
-      - config-server
-      - postgres-db
+      service-registry:
+        condition: service_started
+      config-server:
+        condition: service_healthy
+      postgres-db:
+        condition: service_started
     environment:
       <<: *service-env
     networks:

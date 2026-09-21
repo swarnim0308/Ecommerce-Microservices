@@ -132,6 +132,12 @@ Config Server uses the **native** profile in Docker and reads from the mounted `
 
 Expected Eureka registrations: `Customer-Service`, `Product-Service`, `Inventory-Service`, `Cart-Service`, `Order-Service`, `Shipping-Service`, `Api-Gateway`, `Config-Server`.
 
+> **First boot may need a restart.** On a cold start the config clients can die with
+> `Could not locate PropertySource and the fail fast property is set, failing` because Config
+> Server is not yet accepting connections. See
+> [`docs/RUNNING_LOCALLY.md`](docs/RUNNING_LOCALLY.md) for the full URL reference — Zipkin,
+> RabbitMQ, Prometheus, Grafana, Redis — and the fix.
+
 ### Stop the stack
 
 ```powershell
