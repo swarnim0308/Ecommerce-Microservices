@@ -13,4 +13,6 @@ public interface InventoryService {
 
 	void deleteInventoryById(int id) throws IdNotFoundException;
 
+	InventoryEntity decrementStock(long productId, int quantity) throws IdNotFoundException;
+
 }

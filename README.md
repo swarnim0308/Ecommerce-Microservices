@@ -43,6 +43,40 @@ If any step fails, **compensating actions** undo the completed steps: the custom
 link is removed, the order is deleted, and the cart is restored — giving an at-least-once
 saga with rollback.
 
+The composite **create** endpoints follow the same compensate-on-failure pattern:
+
+- `POST /api/shoppingservice/customer/` (create customer) creates the customer in
+  Customer-Service then a cart in Cart-Service. If the cart creation fails, the customer
+  is deleted so no orphan is left behind.
+- `POST /api/shoppingservice/products/` (create product) creates the product in
+  Product-Service then its inventory record in Inventory-Service. If the inventory call
+  fails, the product is deleted so no orphan is left behind.
+
+### Event-driven inventory decrement (RabbitMQ)
+
+After a successful order placement, Shipping-Service publishes an **`order-placed`** event
+on RabbitMQ (`order.exchange` / `order.placed`). Inventory-Service listens on the
+`inventory.order.placed` queue and **decrements stock** for each line item's `productId`,
+closing the stock-update loop without a blocking call between the two services.
+
+- Publisher: `shipping-service` `CustomerController.placingOrder` (after the saga succeeds).
+- Consumer: `Inventory-Service` `OrderPlacedListener` → `InventoryService.decrementStock`.
+- Broker: `rabbitmq:3-management` container (AMQP `5672`, management UI `15672`).
+- Connection settings come from the shared `service-env` anchor in `docker-compose.yml`;
+  the exchange/queue/routing-key are configurable via `app.rabbitmq.*` in the service
+  `config-properties/*.properties` files.
+
+### Redis catalog cache
+
+Product-Service caches the catalog read (`GET /api/productservice/products`) in **Redis**.
+`ProductService.findAll()` is annotated `@Cacheable("products")`, and the write operations
+(`addProduct`, `updateProduct`, `deleteProductById`) are `@CacheEvict` so the cache stays
+fresh. A JSON serializer is configured with a 30-minute TTL.
+
+- Cache backend: `redis:7-alpine` container (port `6379`).
+- Enabled via `spring.cache.type=redis` in `config-properties/product-service.properties`.
+- Connection comes from `SPRING_DATA_REDIS_*` in the shared `service-env` anchor.
+
 ---
 
 ## Prerequisites
@@ -98,6 +132,12 @@ Config Server uses the **native** profile in Docker and reads from the mounted `
 
 Expected Eureka registrations: `Customer-Service`, `Product-Service`, `Inventory-Service`, `Cart-Service`, `Order-Service`, `Shipping-Service`, `Api-Gateway`, `Config-Server`.
 
+> **First boot may need a restart.** On a cold start the config clients can die with
+> `Could not locate PropertySource and the fail fast property is set, failing` because Config
+> Server is not yet accepting connections. See
+> [`docs/RUNNING_LOCALLY.md`](docs/RUNNING_LOCALLY.md) for the full URL reference — Zipkin,
+> RabbitMQ, Prometheus, Grafana, Redis — and the fix.
+
 ### Stop the stack
 
 ```powershell
@@ -146,6 +186,20 @@ A global `GlobalFilter` (`JwtValidationFilter`) on the API Gateway:
 The storefront (Vite) stores the token in `localStorage` and sends it as `Authorization: Bearer <token>` on all protected calls via a shared `authHeaders()` helper. Login uses email + password; signup collects a password. Logout clears the stored token.
 
 The shared HMAC secret lives in both `CustomerService.security.JwtUtil` and `zuul-api-gateway.JwtValidationFilter`. Change it in both places for production.
+
+**Production base URL.** By default the storefront calls the gateway through the Vite dev
+proxy on `:8080`. For a static deploy, set the build-time `VITE_API_BASE` env var to the
+gateway origin (e.g. `https://api.example.com`) and reverse-proxy `/api` there; the frontend
+prefixes every service path with it.
+
+---
+
+## Centralized exception handling
+
+Each service exposes a `@RestControllerAdvice` that returns a uniform error envelope
+`{timeStamp, statusCode, httpStatus, reason, message}` for both domain exceptions
+(e.g. `IdNotFoundException`, `ProductNotFound`) and any unexpected exception, instead of
+raw stack traces. Covers Customer-Service, Inventory-Service and Product-Service.
 
 ---
 
@@ -210,14 +264,13 @@ Environment variables used in Docker (see `docker-compose.yml`):
 ├── config-properties/       # Externalized config (Docker native profile)
 ├── docker-compose.yml
 ├── frontend/                # Vite storefront, fully wired to the API gateway
-└── hystrix-server/          # Legacy Hystrix dashboard; deprecated (replaced by Resilience4j)
 ```
 
 ---
 
 ## Resilience, Health & Seed Data
 
-### Resilience4j circuit breaker (replaces Hystrix)
+### Resilience4j circuit breaker
 
 The shipping-service composite calls (create product, create customer) are wrapped in
 Resilience4j circuit breakers via `CircuitBreakerFactory`. When a downstream service is
@@ -242,5 +295,11 @@ available at `/actuator/health/liveness` and `/actuator/health/readiness`.
 - Netflix Eureka, Spring Cloud Config, Spring Cloud Gateway
 - Spring Data JPA, PostgreSQL 15
 - Resilience4j (circuit breaker) on shipping-service
+- RabbitMQ (Spring AMQP) for event-driven inventory decrement
+- Redis (Spring Cache) for the product catalog cache
+- Micrometer Tracing + Zipkin for distributed tracing
+- Prometheus + Grafana for metrics (Resilience4j circuit-breaker state, `/actuator/prometheus`)
+- JUnit 5 + Mockito (tests: gateway JWT filter, JwtUtil, inventory decrement)
+- CI via GitHub Actions (`.github/workflows/ci.yml`)
 - JWT (jjwt) + BCrypt for authentication
 - Docker Compose 3.x

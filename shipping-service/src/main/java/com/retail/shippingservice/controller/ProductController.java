@@ -63,7 +63,16 @@ public class ProductController {
 		String createInventoryUrl = inventoryBaseUrl+"api/inventory"; //http://localhost:9003/api/inventory
 		System.err.println(createInventoryUrl);
 		
-		ResponseEntity<InventoryVo> inventoryResponse = template.postForEntity(createInventoryUrl, inventoryVo, InventoryVo.class);
+		ResponseEntity<InventoryVo> inventoryResponse;
+		try {
+			inventoryResponse = template.postForEntity(createInventoryUrl, inventoryVo, InventoryVo.class);
+		} catch (Exception e) {
+			// Compensation: inventory creation failed, roll back the created product.
+			String deleteProductUrl = productBaseUrl + "api/products/" + productID;
+			template.delete(deleteProductUrl);
+			System.err.println("[saga] createProduct failed, compensating: deleted product " + productID);
+			throw e;
+		}
 		
 		ProductVo newProduct = productResponse.getBody();
 		

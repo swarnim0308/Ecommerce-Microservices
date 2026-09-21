@@ -161,6 +161,10 @@ wrapped the composite calls (create customer, create product) with `CircuitBreak
 A downstream failure now returns a graceful `503` fallback instead of a hard error.
 `/actuator/circuitbreakers` exposes breaker state.
 
+**Later cleanup:** the unused `hystrix-server/` dashboard module was removed (pom,
+Dockerfile, and test), and the `hystrix.stream` config comment was dropped from
+shipping-service.
+
 ---
 
 ## 12. Seed data — idempotent CommandLineRunner

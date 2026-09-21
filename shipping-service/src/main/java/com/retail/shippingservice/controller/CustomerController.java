@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import com.netflix.appinfo.InstanceInfo;
 import com.netflix.discovery.EurekaClient;
@@ -41,6 +42,9 @@ public class CustomerController {
 
 	@Autowired
 	private CircuitBreakerFactory<?, ?> circuitBreakerFactory;
+
+	@Autowired
+	private RabbitTemplate rabbitTemplate;
 
 	@GetMapping("/hello")
 	public String hello() {
@@ -68,9 +72,18 @@ public class CustomerController {
 		String cartBaseUrl = getBaseURL("Cart-Service");
 		cartBaseUrl += "/api/cart";
 		//template.put(cartBaseUrl, cartVo);
-		ResponseEntity<CartVo> newCartResponse = template.postForEntity(cartBaseUrl, cartVo, CartVo.class);
-		CartVo newCart = newCartResponse.getBody();
-		System.err.println(newCart);
+		try {
+			ResponseEntity<CartVo> newCartResponse = template.postForEntity(cartBaseUrl, cartVo, CartVo.class);
+			CartVo newCart = newCartResponse.getBody();
+			System.err.println(newCart);
+		} catch (Exception e) {
+			// Compensation: cart creation failed, roll back the created customer.
+			// Delete Customer-Service again so no orphaned customer is left behind.
+			String deleteCustomerUrl = getBaseURL("Customer-Service") + "/customer/deleteCustomer/" + customerID;
+			template.delete(deleteCustomerUrl);
+			System.err.println("[saga] createCustomer failed, compensating: deleted customer " + customerID);
+			throw e;
+		}
 		return new ResponseEntity<>(newCustomer, HttpStatus.OK);
 	}
 	
@@ -112,6 +125,13 @@ public class CustomerController {
 			originalCart = theCart;
 			System.out.println("@@@@@@@@@@@@");
 			System.out.println(theCart);
+
+			// An empty cart must fail the saga: cart lookup returns 200 with an empty
+			// lineitem list, so without this check the order would be created with no items.
+			if (theCart == null || theCart.getLineitem() == null || theCart.getLineitem().isEmpty()) {
+				throw new IllegalStateException("Cart is empty.");
+			}
+
 			OrderVo orderVo = new OrderVo();
 			//List<LineItemVo>
 			orderVo.setLineitem(theCart.getLineitem()) ;
@@ -132,7 +152,11 @@ public class CustomerController {
 			
 			// 5. Empty the cart
 			emptyCart(customerId);
-			
+
+			// 6. Publish order-placed event so Inventory-Service can decrement stock
+			rabbitTemplate.convertAndSend("order.exchange", "order.placed", theCart.getLineitem());
+			System.err.println("[rabbit] published order.placed for customer " + customerId);
+
 			return new ResponseEntity<OrderVo>(order, orderResponse.getStatusCode());
 		} catch (Exception e) {
 			System.err.println("[saga] placing order failed, compensating: " + e.getMessage());
